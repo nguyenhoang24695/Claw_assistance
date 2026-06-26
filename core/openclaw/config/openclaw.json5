@@ -30,13 +30,13 @@
   // approval. ponytail: security="full"; tighten to "ask"/sandbox if the bot is
   // ever exposed beyond the single allowlisted owner.
   agents: {
-    defaults: {
-      model: { primary: "router9/combo-coding" },
-      tools: {
-        profile: "coding",
-        exec: { host: "gateway", security: "full", ask: "off", timeoutSec: 120 },
-      },
-    },
+    defaults: { model: { primary: "router9/combo-coding" } },
+  },
+
+  // exec config is top-level (tools.exec.*). agents.defaults does NOT accept a
+  // `tools` key — per-agent tool profiles go in agents.list[].tools instead.
+  tools: {
+    exec: { host: "gateway", security: "full", ask: "off", timeoutSec: 120 },
   },
 
   // Telegram: single-owner bot. Token comes from .env (TELEGRAM_BOT_TOKEN).
