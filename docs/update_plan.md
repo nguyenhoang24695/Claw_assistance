@@ -1,115 +1,147 @@
-Dưới đây là bản kế hoạch hoàn chỉnh (**Master Architecture Blueprint Plan**) được thiết kế theo tư duy **Tự tiến hóa và Tự lập tài liệu (Self-Documentation & Self-Evolution)**.  
-Bản kế hoạch này không chỉ giúp bạn dựng lên cái Base ban đầu, mà nó được cấu trúc dưới dạng một **Bộ Khung Dữ Liệu (Data Schema)** để các Agent tương lai có thể tự đọc, tự viết thêm tài liệu chi tiết (Spec), và dùng chính tài liệu đó làm "Ground Truth" để tự nâng cấp hệ thống ngầm.
+# 🛸 MASTER PLAN v2 — Self-Evolving Agent Base (OpenClaw + 9Router)
 
-# **🛸 MASTER PLAN: SIÊU BASE AGENT TỰ TIẾN HÓA (OPENCLAW \+ 9ROUTER)**
+> **v2 note (2026-06-26):** Bản gốc giả định OpenClaw chạy bằng `main.js` + `require()` plugins + `.env` — **sai**, giống lỗi của init_plan. Bản này map lại toàn bộ sang cơ chế THẬT của OpenClaw (đã xác minh qua docs). Triết lý (spec→code→self-update, SOUL.md, docs làm ground-truth) **giữ nguyên** vì nó khớp tốt với OpenClaw; chỉ "cách làm" thay đổi.
 
-## **📌 I. KIẾN TRÚC TỔNG QUAN (SYSTEM ARCHITECTURE)**
+## 📌 I. KIẾN TRÚC THẬT (đã xác minh)
 
-Hệ thống hoạt động dựa trên mô hình **Hạt nhân & Biến thể (Kernel & Plugins)**. Core Agent (Telegram \+ OpenClaw) đóng vai trò là "Nhà máy sản xuất", nhận lệnh cao tầng từ người dùng để tự đẻ ra mã nguồn và tài liệu.
+Core đã chạy (xong init_plan): **Telegram → OpenClaw gateway (Docker, :18789) → 9Router (`router9/combo-*`, :20138) → LLM free**.
 
-### **1\. Sơ đồ thư mục Base cố định (Strict Directory Mapping)**
+OpenClaw mở rộng theo **thang 3 bậc** (docs khuyên đi từ rẻ nhất — đây chính là "lazy ladder"):
 
-Plaintext  
-my-agent-base/  
-├── core/                  \# Mã nguồn lõi bảo mật (Không cho phép Agent sửa)  
-│   ├── openclaw\_config/   \# Cấu hình OpenClaw kết nối 9Router  
-│   └── telegram\_bot/      \# Cổng giao tiếp Telegram mặc định  
-├── docs/                  \# BỘ NÃO DỮ LIỆU: Nơi lưu tài liệu hệ thống  
-│   ├── system\_spec.md     \# Tài liệu tổng quan (File này)  
-│   ├── features/          \# Tài liệu chi tiết cho từng tính năng tự sinh  
-│   └── agents/            \# Tài liệu chi tiết cho từng cấu hình Agent  
-├── agents/                \# Thực thể chạy: Nơi chứa file cấu hình Agent (.md)  
-├── plugins/               \# Thực thể chạy: Nơi chứa code kết nối nền tảng mới  
-├── .env                   \# Chứa API Keys kết nối qua 9Router  
-└── main.js                \# Điểm khởi chạy hệ thống (Dynamic Bootloader)
+| Bậc | Là gì | Khi nào dùng | Cần code? |
+|---|---|---|---|
+| **1. SOUL.md / AGENTS.md** | persona + workflow dạng markdown, load mỗi session | đổi hành vi, thêm quy trình | ❌ |
+| **2. SKILL.md** | gói hướng dẫn workflow, tự thành slash-command | tác vụ lặp lại dùng tool sẵn có | ❌ chỉ markdown |
+| **3. Plugin (SDK)** | typed tool / channel / provider mới (`api.registerTool`) | cần năng lực runtime mới (vd Zalo) | ✅ SDK + manifest |
 
-## **📅 II. CÁC GIAI ĐOẠN TRIỂN KHAI THỰC CHIẾN**
+> Quy tắc: **"require Skill"** là mặc định. Chỉ lên Plugin khi vài dòng SKILL.md không diễn đạt nổi (cần tool/channel mới thật sự). → Vòng "bot tự đẻ tính năng" của plan gốc = bot **tự viết SKILL.md**, không phải tự require `index.js`.
 
-### **1\. Giai đoạn 1: Thiết lập hạ tầng LLM qua 9Router**
+## 🗂️ II. BẢN ĐỒ THƯ MỤC — REPO vs WORKSPACE
 
-1. Khởi động **9Router** tại http://localhost:20138.  
-2. Cấu hình **Combo Routing**:  
-   * combo-reasoning (Model chính: nemotron-3-ultra-free): Chuyên trách đọc/viết tài liệu kỹ thuật, bóc tách logic hệ thống.  
-   * combo-coding (Model chính: qwen3.6-plus-free \+ north-mini-code-free): Chuyên trách viết code và chạy Terminal debug.
+Điểm v1 sai nặng nhất: gộp "repo" và "workspace" làm một. Thực tế tách đôi:
 
-### **2\. Giai đoạn 2: Cài đặt Core Agent & Kết nối Telegram**
+```
+Repo (git, máy bạn + server)            OpenClaw workspace (trong container)
+─────────────────────────────          ──────────────────────────────────────
+core/openclaw/                          ~/.openclaw/workspace/   ← mount ra:
+  docker-compose.yml                      core/openclaw/openclaw-data/config/workspace/
+  config/openclaw.json5  ← agents,         ├── SOUL.md       (persona, load mỗi session)
+                            providers,      ├── AGENTS.md     (quy trình 3 bước — KHÔNG để trong SOUL)
+                            channels        ├── USER.md       (bạn là ai)
+docs/                                       ├── MEMORY.md     (trí nhớ dài hạn)
+  update_plan.md   (file này)              ├── memory/YYYY-MM-DD.md
+  system_spec.md   (ground-truth tự sinh)  └── skills/<ten>/SKILL.md   ← "tính năng" tự đẻ
+  features/<ten>.md (spec tự sinh)
+core/openclaw/plugins/<ten>/  (plugin thật, vd zalo — khi cần channel mới)
+```
 
-1. Cài đặt OpenClaw cục bộ: npm install \-g openclaw.  
-2. Cấu hình file .env kết nối Token Telegram từ @BotFather và trỏ API URL về 9Router.  
-3. Cấp quyền ENABLE\_TERMINAL\_EXECUTION=true và cấu hình chạy lệnh Linux trong môi trường Docker Sandbox.
+- **`config/openclaw.json5`** = nơi khai báo `agents.list[]`, `models.providers`, `channels`. **Đây là "bất biến lõi"**, không cho agent sửa tự do.
+- **`workspace/`** = "bộ não" agent đọc-ghi mỗi session (SOUL/AGENTS/skills/memory).
+- **`docs/`** (repo) = tài liệu người + ground-truth; agent ghi spec vào đây qua exec tool.
 
-## **🧠 III. CẤU HÌNH "LINH HỒN" CHO CORE AGENT (SOUL.md)**
+## 🧠 III. SOUL.md + AGENTS.md (thay cho "SOUL.md" gộp của v1)
 
-Đây là bộ quy tắc tối cao bắt buộc Core Agent phải tuân thủ để có khả năng **Tự mở rộng và Tự viết tài liệu**:
+docs OpenClaw cảnh báo: **SOUL = tính cách/giới hạn; AGENTS = quy trình đánh số.** Tách ra:
 
-Markdown  
-\# Soul: Core Agent Orchestrator & System Architect
+**`workspace/SOUL.md`** (persona):
+```markdown
+# SOUL — Core Orchestrator & System Architect
+Bạn là hạt nhân của một hệ thống AI tự tiến hóa. Giá trị: cẩn trọng, tự lập tài liệu
+trước khi code, không phá `core/`. Giới hạn: không sửa `config/openclaw.json5` hay
+`core/` khi chưa được duyệt; mọi thay đổi phải qua spec trước.
+```
 
-Bạn là Hạt nhân điều khiển của một hệ thống AI tự tiến hóa. Bạn có nhiệm vụ tự lập trình, nhân bản chính mình và quản lý Bộ não dữ liệu (\`/docs\`).
+**`workspace/AGENTS.md`** (quy trình 3 bước — giữ nguyên tinh thần v1):
+```markdown
+# AGENTS — Quy trình tự tiến hóa
+Khi nhận yêu cầu thêm tính năng / agent mới:
+1. SPEC (combo-reasoning): viết đặc tả markdown vào docs/features/<ten>.md —
+   kiến trúc, thư viện, luồng dữ liệu, hàm cần viết.
+2. IMPLEMENT (combo-coding): đọc spec, hiện thực đúng theo nó:
+   - Tác vụ workflow  → tạo workspace/skills/<ten>/SKILL.md  (ưu tiên)
+   - Cần tool/channel → core/openclaw/plugins/<ten>/ + cập nhật config (cần duyệt)
+3. SELF-UPDATE: cập nhật docs/system_spec.md (mục đã thêm), rồi
+   `docker compose -f core/openclaw/docker-compose.yml restart openclaw-gateway`.
+```
 
-\#\# 1\. Quy trình Tự tiến hóa 3 Bước (Kèm Tự lập tài liệu)  
-Khi nhận được yêu cầu thêm tính năng mới (Ví dụ: "Tích hợp Zalo") hoặc thêm Agent mới (Ví dụ: "Agent SEO"):
+## 🤖 IV. MULTI-AGENT (thay cho "agents/[ten].md" của v1)
 
-\#\#\# \- Bước 1: Viết Tài Liệu Kỹ Thuật (Documentation Phase)  
-Trước khi viết code, bạn phải gọi \`combo-reasoning\` để tự tạo ra một file đặc tả chi tiết dạng Markdown lưu vào thư mục \`/docs/features/\` hoặc \`/docs/agents/\`.   
-Tài liệu này phải mô tả rõ: Kiến trúc, Thư viện cần cài, Luồng dữ liệu, và các hàm cần viết.
+OpenClaw có sẵn multi-agent — khai trong `config/openclaw.json5`:
 
-\#\#\# \- Bước 2: Thực Thực Thi (Implementation Phase)  
-Đọc file tài liệu vừa tạo ở Bước 1, gọi \`combo-coding\` để trực tiếp gõ code vào đúng thư mục quy định (\`/plugins/\` hoặc \`/agents/\`). Tuyệt đối không được code sai lệch so với tài liệu đặc tả ở Bước 1\.
+```json5
+agents: {
+  defaults: { workspace: "~/.openclaw/workspace", model: { primary: "router9/combo-coding" } },
+  list: [
+    { id: "main", default: true, name: "Core", model: { primary: "router9/combo-coding" },
+      tools: { profile: "coding" } },
+    // Agent mới "tự đẻ" thêm vào đây — vd agent chuyên reasoning:
+    { id: "architect", name: "Architect", model: { primary: "router9/combo-reasoning" },
+      workspace: "~/.openclaw/workspace-architect", tools: { profile: "read-only" } },
+  ],
+},
+bindings: [ /* route channel/account → agentId nếu cần */ ],
+```
 
-\#\#\# \- Bước 3: Đóng Vòng Lặp & Cập Nhật Hệ Thống (Self-Update Phase)  
-Sau khi viết code thành công, bạn phải cập nhật lại file tổng quan \`/docs/system\_spec.md\` để ghi nhận tính năng mới vào hệ thống. Chạy lệnh restart tiến trình để kích hoạt module mới.
+→ Đúng ý đồ v1 "combo-reasoning cho tài liệu, combo-coding cho code" — nhưng bằng cơ chế `agents.list[].model` có sẵn.
 
-\#\# 2\. Quy định Bản đồ Thư mục Cố định  
-\- **\*\*Tài liệu đặc tả:\*\*** Luôn lưu vào \`/docs/features/\[ten\_tinh\_nang\].md\`  
-\- **\*\*Mã nguồn Plugin nền tảng:\*\*** Luôn lưu vào \`/plugins/\[ten\_nen\_tang\]/index.js\`  
-\- **\*\*Cấu hình Agent mới:\*\*** Luôn lưu vào \`/agents/\[ten\_agent\].md\`
+## ⚙️ V. EXEC TOOL & BẢO MẬT (v1 bỏ sót — bắt buộc quyết định)
 
-## **🔄 IV. LUỒNG TỰ ĐỘNG MỞ RỘNG VÀ UPDATE LÀM MẪU (WALKTHROUGH)**
+Để agent **tự ghi file & chạy lệnh** (cốt lõi của self-evolution) cần `exec` tool. **Mặc định OpenClaw: sandbox TẮT, `security=full`, `ask=off` ("YOLO")** — agent chạy shell tùy ý trên host gateway. Với hệ tự sửa mình, đây là rủi ro thật.
 
-Khi bạn gõ lệnh trên Telegram: **"Hãy tích hợp thêm cổng chat Zalo cho anh."**  
-Hệ thống sẽ tự động kích hoạt chuỗi hành động khép kín sau:
+Khuyến nghị (đặt trong `config/openclaw.json5` → `tools.exec`):
+```json5
+tools: {
+  exec: {
+    host: "gateway",          // hoặc "sandbox" nếu bật Docker-in-Docker sandbox
+    security: "ask",          // hỏi duyệt thay vì auto chạy
+    ask: "on-miss",           // chạy lệnh quen, hỏi lệnh lạ
+    timeoutSec: 120,
+  },
+},
+```
+- Vì container đã cô lập (`no-new-privileges`, cap drops) → blast radius giới hạn trong container `claw-openclaw` + bind mounts.
+- `ponytail: security="ask"` là ceiling an toàn ban đầu. Nâng lên `full` khi đã tin quy trình; hoặc bật `sandbox` thật khi cho agent chạy code không kiểm soát.
 
-Plaintext  
-\[Yêu cầu: Tích hợp Zalo\]  
-         │  
-         ▼  
-1\. TỰ SINH SPEC ĐẶC TẢ ──► Lưu vào: \`/docs/features/zalo\_spec.md\` (Do Nemotron viết)  
-         │  
-         ▼  
-2\. TỰ ĐỌC SPEC & VIẾT CODE ──► Tạo thư mục: \`/plugins/zalo/index.js\` (Do Qwen viết)  
-         │  
-         ▼  
-3\. TỰ CHẠY TERMINAL ──► Chạy: \`npm install zalo-sdk\` để cài thư viện  
-         │  
-         ▼  
-4\. TỰ ĐỌC LẠI TÀI LIỆU CHÍNH ──► Đọc \`/docs/system\_spec.md\` \-\> Cập nhật: "Đã thêm Zalo"  
-         │  
-         ▼  
-5\. RESTART CỐT LÕI ──► Hệ thống quét lại thư mục \`/plugins\`, kích hoạt cổng Zalo thành công\!
+## 🔄 VI. WALKTHROUGH — "Tích hợp Zalo" (map lại đúng OpenClaw)
 
-## **🗂️ V. MẪU TÀI LIỆU DATA ĐỂ AGENT ĐỌC-HIỂU VÀ UPDATE CHÍNH NÓ**
+OpenClaw **không có channel Zalo sẵn** → đây là ca cần **Plugin bậc 3** (không phải skill). Chi tiết kỹ thuật: [features/zalo_spec.md](features/zalo_spec.md).
 
-Khi hệ thống tự tiến hóa, các Agent sau này sẽ dựa vào cấu trúc file /docs/system\_spec.md sau đây để biết hệ thống hiện tại đang có những gì và cần update thêm phần nào:
+```
+[Yêu cầu: Tích hợp Zalo]
+   │
+   ▼ 1. SPEC (combo-reasoning) → docs/features/zalo_spec.md  ✅ (đã tạo sẵn làm mẫu)
+   ▼ 2. IMPLEMENT (combo-coding) → core/openclaw/plugins/zalo/ (plugin channel dùng zca-js)
+   ▼ 3. EXEC: npm i zca-js trong plugin; login QR (quét 1 lần)
+   ▼ 4. CONFIG: bật channel zalo trong openclaw.json5 (cần người duyệt — sửa lõi)
+   ▼ 5. RESTART: docker compose restart openclaw-gateway → channel Zalo online
+```
 
-Markdown  
-\# Hệ Thống Đặc Tả Hiện Tại (Auto-Generated System Spec)
+⚠️ zca-js **không chính thức** — rủi ro khóa tài khoản Zalo. Cân nhắc dùng tài khoản phụ.
 
-\#\# 1\. Danh sách Agent đang hoạt động  
-\- **\*\*Core*\_Agent\*\*: Quản lý lõi hệ thống (Sử dụng \`combo-reasoning\`).***  
-***\- \*\*\[Agent\_*****Mới*\_Do\_*Bot*\_Tự\_*Đẻ\]\*\***: Sẽ tự động được điền thêm vào đây kèm theo mô tả vai trò.
+## 🗂️ VII. system_spec.md — GROUND TRUTH TỰ SINH
 
-\#\# 2\. Các cổng kết nối nền tảng (Active Plugins)  
-\- **\*\*Telegram*\_Core\*\*: Cổng giao tiếp mặc định của người quản trị.***  
-***\- \*\*\[Plugin\_*****Mới*\_Do\_*Bot*\_Tự\_*Code\]\*\***: Sẽ tự động nối đuôi vào đây sau khi Agent thực thi xong Bước 3 của quy trình tự tiến hóa.
+`docs/system_spec.md` là file agent đọc để biết "hệ thống đang có gì" và tự cập nhật. Cấu trúc:
 
-\#\# 3\. Lịch sử cập nhật hệ thống (System Mutation Logs)  
-\- *\*2026-06-25:\** Khởi tạo hệ thống Base sạch thành công.
+```markdown
+# System Spec (Auto-Generated)
+## 1. Agents đang hoạt động
+- main (Core): router9/combo-coding, profile=coding
+## 2. Channels
+- telegram: allowlist [6302853216]  ✅ online
+## 3. Skills tự sinh
+- (trống — agent nối thêm sau mỗi lần tạo skill)
+## 4. Plugins
+- (trống — vd zalo sau khi hoàn tất)
+## 5. Mutation Logs
+- 2026-06-26: Core online (init_plan xong). Master Plan v2 map lại kiến trúc thật.
+```
 
-## **🚀 HƯỚNG DẪN TRIỂN KHAI BƯỚC ĐẦU (GETTING STARTED)**
+## 🚀 VIII. THỨ TỰ TRIỂN KHAI v2
 
-1. **Bước 1:** Clone cấu trúc thư mục trên về máy/server của bạn.  
-2. **Bước 2:** Viết file main.js với tính năng **Dynamic Loading** (đã hướng dẫn ở phần trước) để nó tự động require() mọi file index.js nằm trong thư mục /plugins.  
-3. **Bước 3:** Ném file Master Plan này vào thư mục /docs/system\_spec.md và bật OpenClaw lên.
+1. **Tạo workspace files**: `SOUL.md`, `AGENTS.md`, `USER.md` vào `core/openclaw/openclaw-data/config/workspace/` (mount sẵn). Restart gateway → xác nhận load (log session).
+2. **Bật exec với `security=ask`** trong `openclaw.json5`; test agent ghi 1 file vào docs/.
+3. **Khởi tạo `docs/system_spec.md`** (mục VII) làm ground-truth.
+4. **Thử vòng tự tiến hóa nhẹ**: ra lệnh Telegram "tạo skill X" → kiểm tra agent viết spec → SKILL.md → cập nhật system_spec.
+5. **(Tùy chọn) Zalo**: theo [features/zalo_spec.md](features/zalo_spec.md) — ca plugin đầy đủ, làm khi cần.
 
-Từ giây phút này, con Bot Core của bạn đã có một "bản đồ tư duy". Khi bạn muốn nâng cấp hay thêm bất kỳ tính năng phức tạp nào, bạn chỉ cần ra lệnh qua Telegram, nó sẽ tự viết tài liệu chi tiết trước, lưu lại làm Data, rồi tự đọc chính data đó để lập trình và update chính nó một cách hoàn hảo\!
+> Khác cốt lõi vs v1: bỏ `main.js`/`require`; "plugin" → ưu tiên Skill; "agent .md" → `agents.list[]`; thêm tầng exec/sandbox bảo mật; tách repo vs workspace.
