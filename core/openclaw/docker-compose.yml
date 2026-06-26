@@ -1,0 +1,55 @@
+# OpenClaw gateway + cli sidecar (official two-service layout, trimmed).
+# Isolated instance for this project. LLM calls route to our 9Router at
+# host.docker.internal:20138 (see config/openclaw.json5).
+#
+# Secrets come from ../../.env (gitignored) — TELEGRAM_BOT_TOKEN etc.
+services:
+  openclaw-gateway:
+    image: ghcr.io/openclaw/openclaw:latest
+    container_name: claw-openclaw
+    restart: unless-stopped
+    init: true
+    env_file:
+      - ../../.env
+    environment:
+      OPENCLAW_HOME: /home/node
+      OPENCLAW_CONFIG_DIR: /home/node/.openclaw
+      OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # reach 9Router on the host
+    ports:
+      - "18789:18789"
+    volumes:
+      - ./openclaw-data/config:/home/node/.openclaw
+      - ./openclaw-data/secrets:/home/node/.config/openclaw
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:18789/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  openclaw-cli:
+    image: ghcr.io/openclaw/openclaw:latest
+    network_mode: "service:openclaw-gateway"   # share gateway's network namespace
+    depends_on:
+      - openclaw-gateway
+    env_file:
+      - ../../.env
+    environment:
+      OPENCLAW_HOME: /home/node
+      OPENCLAW_CONFIG_DIR: /home/node/.openclaw
+      OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
+      BROWSER: echo
+    volumes:
+      - ./openclaw-data/config:/home/node/.openclaw
+      - ./openclaw-data/secrets:/home/node/.config/openclaw
+    security_opt:
+      - no-new-privileges:true
+    stdin_open: true
+    tty: true
+    init: true
+    entrypoint: ["node", "dist/index.js"]
+    profiles: ["cli"]   # only runs when explicitly invoked, not on `up`

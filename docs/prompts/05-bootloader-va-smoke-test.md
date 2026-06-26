@@ -1,51 +1,34 @@
-# PROMPT 05 — Create Core Bootloader & Smoke Test
+# PROMPT 05 — Pair Telegram & Smoke Test
 
 ## Role
-You are the final integration agent. Task: write `core/bootloader.js` to activate OpenClaw, auto-load plugins/agents, then run a full end-to-end smoke test.
+You are the final integration agent. Task: pair your Telegram account with the OpenClaw bot and verify the full backbone (Telegram → OpenClaw → 9Router → LLM) end to end.
 
 ## Context
-Target OS: **Ubuntu (Linux)**. This is **step 5/5** — the closing step. DEPENDS ON: steps 1–4 complete (9Router has combos, Telegram has token/user-id, directories set up, OpenClaw installed + `.env` configured).
+Target OS: **Ubuntu (Linux)**. This is **step 5/5** — the closing step. DEPENDS ON steps 1–4 complete (9Router up on 20138; OpenClaw gateway `claw-openclaw` running on 18789 with the `router9` provider and Telegram allowlist).
+
+> NOTE: the original plan's `core/bootloader.js` is OBSOLETE. OpenClaw ships its own gateway daemon — there is nothing to bootstrap. This step is pairing + verification only.
 
 ## Execution
-1. Create the file `core/bootloader.js`:
-
-   ```javascript
-   const fs = require('fs');
-   const path = require('path');
-
-   console.log("[Core] Starting control kernel...");
-
-   // 1. Auto-create dynamic directories if missing
-   const requiredDirs = ['./agents', './plugins', './modules', './docs'];
-   requiredDirs.forEach(dir => {
-     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-   });
-
-   // 2. Scan & load self-generated plugins (Zalo, Discord... later)
-   const pluginsDir = path.join(__dirname, '../plugins');
-   fs.readdirSync(pluginsDir).forEach(pluginName => {
-     const pluginPath = path.join(pluginsDir, pluginName, 'index.js');
-     if (fs.existsSync(pluginPath)) {
-       console.log(`[Core] Loading self-generated connector: ${pluginName}`);
-       require(pluginPath);
-     }
-   });
-
-   // 3. OpenClaw starts listening to Telegram
-   console.log("[Core] Telegram and 9Router connected successfully. System Online!");
+1. Open Telegram, find your bot (the one whose token is in `.env`), send `/start` or any DM.
+2. Approve the pairing (the allowlist already restricts to your user id):
+   ```bash
+   # find the pairing code / from.id in the gateway logs:
+   docker logs claw-openclaw --tail 40
+   # if a code is shown, approve it via the cli sidecar:
+   docker compose -f core/openclaw/docker-compose.yml --profile cli run --rm \
+     openclaw-cli pairing approve telegram <CODE>
    ```
-
-2. Run: `node core/bootloader.js`.
+3. Send a real message to the bot, e.g. `"Hi, system check"`.
 
 ## Smoke Test (Definition of Done)
-1. `node core/bootloader.js` runs without errors and prints "System Online!".
-2. Open Telegram, go to the bot you created, send `/start` or `"Hi, system check"`.
-3. The bot replies **AND** the 9Router dashboard shows a request log from model `combo-coding`.
-   → The backbone (Core) is 100% operational.
+1. `curl -s http://localhost:18789/healthz` → 2xx.
+2. The bot replies in Telegram to your message.
+3. The **9Router dashboard** (`http://<server-ip>:20138`) shows a fresh request log routed via `combo-coding`.
+   → Backbone (Telegram → OpenClaw → 9Router → LLM) is 100% operational.
 
 ## Final Handover
-- File `core/bootloader.js` exists and runs.
+- `claw-openclaw` + `claw-9router` both running, isolated from other server projects.
 - Smoke test passes all 3 checks.
-- Next step (outside the 5-step scope): copy the **Master Plan** content into `docs/system_spec.md` so the Agent gets a "mental map" to self-expand.
+- Next (outside the 5-step scope): copy the **Master Plan** into `docs/system_spec.md` so the agent can self-expand.
 
-> If the bot does not reply: check (a) token/user-id in `.env`, (b) 9Router still running on `:20138` (`curl http://localhost:20138`), (c) Docker daemon enabled (`docker ps` without `sudo`).
+> If the bot does not reply: check (a) token in `.env` + your id in `allowFrom`, (b) `docker logs claw-openclaw --tail 60`, (c) 9Router reachable from the container: `docker exec claw-openclaw node -e "fetch('http://host.docker.internal:20138/v1/models').then(r=>console.log(r.status))"`.

@@ -9,6 +9,10 @@ node_modules/
 # Agent runtime workspace
 workspace/
 
+# OpenClaw / 9Router runtime data (config, secrets, state)
+core/openclaw/openclaw-data/
+core/9router/9router-data/
+
 # Logs / OS junk
 *.log
 .DS_Store
