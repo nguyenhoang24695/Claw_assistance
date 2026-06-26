@@ -40,8 +40,11 @@ if ss -ltn 2>/dev/null | grep -q ":$PORT "; then
   fi
 fi
 
+log "Pulling latest image ($NAME tracks :latest)…"
+$DC -f "$COMPOSE" pull   # :latest is cached locally otherwise — force a registry check
+
 log "Starting '$NAME' on port $PORT…"
-$DC -f "$COMPOSE" up -d
+$DC -f "$COMPOSE" up -d   # recreates the container if a newer image was pulled
 
 log "Container status:"
 docker ps --filter "name=$NAME" --format '  {{.Names}}  {{.Status}}  {{.Ports}}'
