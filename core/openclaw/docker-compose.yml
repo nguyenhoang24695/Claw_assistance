@@ -14,6 +14,7 @@ services:
     environment:
       OPENCLAW_HOME: /home/node
       OPENCLAW_CONFIG_DIR: /home/node/.openclaw
+      OPENCLAW_CONFIG_PATH: /home/node/.openclaw/openclaw.json5
       OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
     extra_hosts:
       - "host.docker.internal:host-gateway"   # reach 9Router on the host
@@ -41,6 +42,7 @@ services:
     environment:
       OPENCLAW_HOME: /home/node
       OPENCLAW_CONFIG_DIR: /home/node/.openclaw
+      OPENCLAW_CONFIG_PATH: /home/node/.openclaw/openclaw.json5
       OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
       BROWSER: echo
     volumes:
