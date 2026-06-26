@@ -27,7 +27,7 @@ my-agent-base/
 
 ### **1\. Giai đoạn 1: Thiết lập hạ tầng LLM qua 9Router**
 
-1. Khởi động **9Router** tại http://localhost:20128.  
+1. Khởi động **9Router** tại http://localhost:20138.  
 2. Cấu hình **Combo Routing**:  
    * combo-reasoning (Model chính: nemotron-3-ultra-free): Chuyên trách đọc/viết tài liệu kỹ thuật, bóc tách logic hệ thống.  
    * combo-coding (Model chính: qwen3.6-plus-free \+ north-mini-code-free): Chuyên trách viết code và chạy Terminal debug.

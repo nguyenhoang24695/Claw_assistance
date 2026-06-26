@@ -1,0 +1,16 @@
+# Dedicated 9Router instance for Claw_assistance — fully isolated from the
+# existing `automation-agent-9router-1` (separate name, port, and data dir).
+# Same image, so no extra pull. Internal+external port = 20138.
+services:
+  claw-9router:
+    image: decolua/9router:latest
+    container_name: claw-9router
+    restart: unless-stopped
+    environment:
+      PORT: 20138          # 9Router reads its listen port from PORT
+      HOSTNAME: 0.0.0.0
+      DATA_DIR: /app/data
+    ports:
+      - "20138:20138"
+    volumes:
+      - ./9router-data:/app/data   # isolated config/keys/combos for THIS instance

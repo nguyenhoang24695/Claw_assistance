@@ -17,7 +17,7 @@ Hoàn thành kế hoạch này, bạn sẽ có một "bệ phóng" sạch sẽ, 
 
 9Router đóng vai trò gom và phân phối API Key từ các model miễn phí, giúp Agent chạy liên tục không lo tốn phí.
 
-1. Khởi động giao diện Dashboard của **9Router** (Mặc định tại http://localhost:20128).  
+1. Khởi động giao diện Dashboard của **9Router** (Mặc định tại http://localhost:20138).  
 2. Vào mục **Providers** $\\rightarrow$ Thêm các API Key miễn phí mà bạn có (Kiro AI, OpenCode Free, iFlow...).  
 3. Vào mục **Combos** $\\rightarrow$ Tạo 2 nhóm định tuyến chiến lược:  
    * **combo-reasoning**: Ưu tiên gán model nemotron-3-ultra-free (Dùng để bóc tách logic, lên kế hoạch và viết tài liệu đặc tả).  
@@ -48,7 +48,7 @@ npm install \-g openclaw
 
 \`\`\`env  
 \# \--- CẤU HÌNH ĐỊNH TUYẾN QUA 9ROUTER \---  
-OPENAI\_API\_BASE=http://localhost:20128/v1  
+OPENAI\_API\_BASE=http://localhost:20138/v1  
 OPENAI\_API\_KEY=9router\_local\_secret  
 OPENAI\_MODEL=combo-coding
 

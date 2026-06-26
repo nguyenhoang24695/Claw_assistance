@@ -85,7 +85,7 @@ check_port() {
     ok "port $p ($label) is free"
   fi
 }
-check_port 20128 "9Router dashboard"
+check_port 20138 "9Router dashboard"
 
 # --- Definition of Done ------------------------------------------------------
 log "Verify (Definition of Done):"

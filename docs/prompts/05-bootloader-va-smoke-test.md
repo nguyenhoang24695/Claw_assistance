@@ -48,4 +48,4 @@ Target OS: **Ubuntu (Linux)**. This is **step 5/5** — the closing step. DEPEND
 - Smoke test passes all 3 checks.
 - Next step (outside the 5-step scope): copy the **Master Plan** content into `docs/system_spec.md` so the Agent gets a "mental map" to self-expand.
 
-> If the bot does not reply: check (a) token/user-id in `.env`, (b) 9Router still running on `:20128` (`curl http://localhost:20128`), (c) Docker daemon enabled (`docker ps` without `sudo`).
+> If the bot does not reply: check (a) token/user-id in `.env`, (b) 9Router still running on `:20138` (`curl http://localhost:20138`), (c) Docker daemon enabled (`docker ps` without `sudo`).

@@ -6,7 +6,7 @@ You are a processing-brain configuration agent. Task: install OpenClaw and creat
 ## Context
 Target OS: **Ubuntu (Linux)**. This is **step 4/5**. DEPENDS ON:
 - Step 0: Node.js (via nvm) and Docker installed & usable without `sudo`.
-- Step 1: 9Router endpoint `http://localhost:20128/v1` + combo `combo-coding`.
+- Step 1: 9Router endpoint `http://localhost:20138/v1` + combo `combo-coding`.
 - Step 2: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ALLOWED_USER_IDS`.
 - Step 3: directory tree set up (including `workspace/`).
 
@@ -19,7 +19,7 @@ Target OS: **Ubuntu (Linux)**. This is **step 4/5**. DEPENDS ON:
 
    ```env
    # --- ROUTING THROUGH 9ROUTER ---
-   OPENAI_API_BASE=http://localhost:20128/v1
+   OPENAI_API_BASE=http://localhost:20138/v1
    OPENAI_API_KEY=9router_local_secret
    OPENAI_MODEL=combo-coding
 
