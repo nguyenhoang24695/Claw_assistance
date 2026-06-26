@@ -11,9 +11,10 @@ IMPORTANT — the server already runs ANOTHER 9Router (`automation-agent-9router
 ## Execution
 1. Start this project's dedicated 9Router instance (from repo root):
    ```bash
-   docker compose -f core/9router/docker-compose.yml up -d
-   docker ps --filter name=claw-9router      # confirm Up, 0.0.0.0:20138->20138
+   bash scripts/01-start-9router.sh
    ```
+   The script is idempotent: it brings up `claw-9router` on port 20138, waits
+   for the dashboard, and confirms the existing instance is untouched.
    Then open `http://localhost:20138` (or `http://<server-ip>:20138`).
 2. Go to **Providers** → add the free API keys you have (Kiro AI, OpenCode Free, iFlow, ...).
 3. Go to **Combos** → create exactly 2 routing combos:
