@@ -37,10 +37,11 @@
     list: [
       { id: "main", default: true, name: "Cua",
         model: { primary: "router9/combo-orchestrator" },
-        subagents: { allowAgents: ["planner"], requireAgentId: true } },
+        // Cua orchestrates sequentially: spawn planner first, then spawn coder with planner's plan.
+        // Do NOT rely on planner spawning coder; OpenClaw strips spawn tools inside subagents.
+        subagents: { allowAgents: ["planner", "coder"], requireAgentId: true } },
       { id: "planner", name: "Planner",
-        model: { primary: "router9/combo-planner" },
-        subagents: { allowAgents: ["coder"], requireAgentId: true } },
+        model: { primary: "router9/combo-planner" } },
       { id: "coder", name: "Coder",
         model: { primary: "router9/combo-coder" } },
     ],

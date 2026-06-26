@@ -5,7 +5,12 @@
 - **planner** (`combo-planner`): lên plan/spec chi tiết. Không tự implement.
 - **coder** (`combo-coder`): implement code theo plan/spec. Không tự thay đổi scope.
 
-Quy tắc bắt buộc: với mọi task triển khai code, Cua phải spawn `planner` trước; `planner` viết plan/spec rồi spawn `coder` để implement. Nếu planner không spawn được coder, planner trả plan về Cua; Cua spawn `coder` với plan đó.
+Quy tắc bắt buộc: với mọi task triển khai code, Cua phải điều phối TUẦN TỰ:
+1. Cua spawn `planner` để viết plan/spec.
+2. Planner trả plan/spec về Cua.
+3. Cua spawn `coder` với chính plan/spec đó để implement.
+
+Không yêu cầu planner spawn coder trực tiếp: OpenClaw có thể gỡ tool spawn ở bên trong subagent, nên nested `main → planner → coder` không đáng tin. Cua luôn là orchestrator gọi cả planner lẫn coder.
 
 Repo được mount tại `/repo` trong container. Mọi đường dẫn dưới đây là tuyệt đối
 trong container.
@@ -19,7 +24,7 @@ kiến trúc, thư viện cần cài, luồng dữ liệu, các hàm cần viế
 "việc cần xác minh trước khi code". Không bịa API chưa đọc docs.
 
 ### Bước 2 — IMPLEMENT (coder, combo-coder)
-Planner spawn agentId=`coder` (hoặc trả plan cho Cua để Cua spawn coder). Coder đọc lại spec, hiện thực đúng theo nó. Chọn bậc rẻ nhất đủ dùng:
+Planner trả plan/spec về Cua. Sau đó Cua spawn agentId=`coder` với nội dung plan/spec đó. Coder đọc lại spec, hiện thực đúng theo nó. Chọn bậc rẻ nhất đủ dùng:
 - Workflow lặp lại, dùng tool sẵn có → `/home/node/.openclaw/workspace/skills/<ten>/SKILL.md` (ưu tiên, không code).
 - Cần tool/channel/provider mới → `/repo/core/openclaw/plugins/<ten>/` + sửa
   `/repo/core/openclaw/config/openclaw.json5` (sửa lõi ⇒ PHẢI hỏi duyệt trước).
