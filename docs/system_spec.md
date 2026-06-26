@@ -12,7 +12,7 @@
 - **telegram** — ✅ online. `dmPolicy: allowlist`, chỉ owner (id 6302853216).
 
 ## 3. Skills tự sinh (workspace/skills/<ten>/SKILL.md)
-- (trống — Cua nối thêm sau mỗi lần tạo skill)
+- **chao-hoi** — Chào người dùng bằng tiếng Việt kèm giờ hiện tại khi gõ `/chao-hoi`. Spec: docs/features/chao-hoi.md
 
 ## 4. Plugins (core/openclaw/plugins/<ten>/)
 - (trống — vd `zalo` sau khi hoàn tất; spec: docs/features/zalo_spec.md)
@@ -28,3 +28,4 @@
 - **2026-06-26**: Core online (init_plan xong) — Telegram→OpenClaw→9Router→LLM.
 - **2026-06-26**: Master Plan v2 — map kiến trúc tự-tiến-hóa sang cơ chế OpenClaw thật.
 - **2026-06-26**: v2 Bước 1 — workspace files (persona Cua 🦀). Bước 2 — exec bật, test ghi file OK.
+- **2026-06-26**: Thêm skill `chao-hoi` — chào Việt Nam + giờ hiện tại. Spec: docs/features/chao-hoi.md
