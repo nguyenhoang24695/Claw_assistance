@@ -6,8 +6,8 @@
 # Dependencies
 node_modules/
 
-# Agent runtime workspace
-workspace/
+# Agent runtime workspace (root only — NOT core/openclaw/workspace source)
+/workspace/
 
 # OpenClaw / 9Router runtime data (config, secrets, state)
 core/openclaw/openclaw-data/
