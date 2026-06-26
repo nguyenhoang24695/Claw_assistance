@@ -23,6 +23,7 @@ services:
     volumes:
       - ./openclaw-data/config:/home/node/.openclaw
       - ./openclaw-data/secrets:/home/node/.config/openclaw
+      - ../../:/repo   # whole repo: Cua self-documents into docs/, plugins/ (git-tracked)
     security_opt:
       - no-new-privileges:true
     healthcheck:
