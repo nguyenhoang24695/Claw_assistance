@@ -25,7 +25,19 @@
   },
 
   // Default agent model = the coding combo (matches the project plan).
-  agents: { defaults: { model: { primary: "router9/combo-coding" } } },
+  // exec: container IS the sandbox (no-new-privileges, cap drops, isolated,
+  // writes confined to bind mounts) + single owner → run freely, no per-command
+  // approval. ponytail: security="full"; tighten to "ask"/sandbox if the bot is
+  // ever exposed beyond the single allowlisted owner.
+  agents: {
+    defaults: {
+      model: { primary: "router9/combo-coding" },
+      tools: {
+        profile: "coding",
+        exec: { host: "gateway", security: "full", ask: "off", timeoutSec: 120 },
+      },
+    },
+  },
 
   // Telegram: single-owner bot. Token comes from .env (TELEGRAM_BOT_TOKEN).
   // allowlist + numeric id => only you can DM it.
