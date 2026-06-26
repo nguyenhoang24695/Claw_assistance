@@ -16,10 +16,13 @@ Files in the repo:
 - `core/openclaw/config/openclaw.json5` — provider `router9` + Telegram allowlist (set your user id in `allowFrom`).
 
 ## Execution
-1. Create `.env` with the bot token (secret, gitignored):
+1. Create `.env` with the bot token + a generated gateway token (secret, gitignored):
    ```bash
    TELEGRAM_BOT_TOKEN='<token_from_botfather>' bash scripts/04-make-env.sh
    ```
+   The script prints `OPENCLAW_GATEWAY_TOKEN` — save it; you paste it into the
+   Control UI Settings on first login. The gateway refuses to start without it
+   (it binds `0.0.0.0` inside the container, so auth is mandatory).
 2. Confirm your Telegram user id is in `core/openclaw/config/openclaw.json5` → `channels.telegram.allowFrom`.
 3. Start the gateway (handles uid-1000 mount ownership, waits for health):
    ```bash
