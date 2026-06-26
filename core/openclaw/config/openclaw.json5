@@ -19,6 +19,7 @@
         models: [
           { id: "combo-coding",    name: "9Router Coding",    contextWindow: 128000, maxTokens: 8192 },
           { id: "combo-reasoning", name: "9Router Reasoning", contextWindow: 128000, maxTokens: 8192 },
+          { id: "codex_combo",     name: "Codex (gpt-5.5, PAID)", contextWindow: 128000, maxTokens: 8192 },
         ],
       },
     },
@@ -29,8 +30,18 @@
   // writes confined to bind mounts) + single owner → run freely, no per-command
   // approval. ponytail: security="full"; tighten to "ask"/sandbox if the bot is
   // ever exposed beyond the single allowlisted owner.
+  // main = Cua (free combo-coding, default, talks to Telegram, orchestrates).
+  // coder = dùng codex_combo (gpt-5.5, TRẢ PHÍ) — chỉ chạy khi Cua delegate việc
+  // implement code, nên không đốt token OpenAI cho chat vặt.
   agents: {
     defaults: { model: { primary: "router9/combo-coding" } },
+    list: [
+      { id: "main", default: true, name: "Cua",
+        model: { primary: "router9/combo-coding" },
+        subagents: { allowAgents: ["coder"] } },
+      { id: "coder", name: "Coder",
+        model: { primary: "router9/codex_combo" } },
+    ],
   },
 
   // exec config is top-level (tools.exec.*). agents.defaults does NOT accept a
