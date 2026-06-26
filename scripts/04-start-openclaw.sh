@@ -37,6 +37,13 @@ fi
 log "Preparing data dirs + config…"
 mkdir -p "$OC/openclaw-data/config" "$OC/openclaw-data/secrets" "$OC/openclaw-data/config/workspace"
 cp "$OC/config/openclaw.json5" "$OC/openclaw-data/config/openclaw.json5"
+# Workspace bootstrap files (SOUL/AGENTS/USER...) — source of truth in repo,
+# copied into the mounted workspace. -n: don't clobber agent-edited files (memory, skills).
+if [ -d "$OC/workspace" ]; then
+  cp -rn "$OC/workspace/." "$OC/openclaw-data/config/workspace/" 2>/dev/null || true
+  cp "$OC/workspace/"*.md "$OC/openclaw-data/config/workspace/" 2>/dev/null || true  # always refresh top-level docs
+  ok "workspace bootstrap files synced"
+fi
 sudo chown -R 1000:1000 "$OC/openclaw-data" 2>/dev/null \
   && ok "data dirs owned by uid 1000" \
   || warn "could not chown to 1000:1000 (may cause permission warnings)"
