@@ -11,31 +11,19 @@ Target OS: **Ubuntu (Linux)**. This is **step 4/5**. DEPENDS ON:
 - Step 3: directory tree set up (including `workspace/`).
 
 ## Execution
-1. Install OpenClaw globally (nvm-managed Node → no `sudo` needed):
-   ```bash
-   npm install -g openclaw
-   ```
-2. Create the `.env` file at the **project root** with the following (replace with real values from steps 1 & 2):
+Run the script from repo root, passing the Telegram secrets inline (they are
+NOT stored in the repo — only written into the gitignored `.env`):
 
-   ```env
-   # --- ROUTING THROUGH 9ROUTER ---
-   OPENAI_API_BASE=http://localhost:20138/v1
-   OPENAI_API_KEY=9router_local_secret
-   OPENAI_MODEL=combo-coding
+```bash
+TELEGRAM_BOT_TOKEN=<token_from_botfather> \
+TELEGRAM_ALLOWED_USER_IDS=<your_telegram_user_id> \
+bash scripts/04-install-openclaw.sh
+```
 
-   # --- SECURITY & TELEGRAM CHANNEL ---
-   TELEGRAM_BOT_TOKEN=<token_from_botfather>
-   TELEGRAM_ALLOWED_USER_IDS=<your_telegram_user_id>
-
-   # --- LINUX TERMINAL EXECUTION PERMISSION ---
-   WORKSPACE_DIR=./workspace
-   ENABLE_TERMINAL_EXECUTION=true
-   EXECUTION_MODE=docker   # Force terminal commands to run inside a Docker container for safety
-   ```
-3. Lock down `.env` permissions (it holds secret tokens):
-   ```bash
-   chmod 600 .env
-   ```
+The script: installs `openclaw` globally (via nvm Node, no `sudo`), generates
+`.env` (endpoint `http://localhost:20138/v1`, `combo-coding`), `chmod 600`s it,
+and verifies. See `.env.example` for the full template.
+Re-run with `FORCE=1` to overwrite an existing `.env`.
 
 ## Deliverables
 - OpenClaw installed successfully (`openclaw --version` works).
