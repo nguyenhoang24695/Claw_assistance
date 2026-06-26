@@ -14,7 +14,7 @@
     providers: {
       router9: {
         baseUrl: "http://host.docker.internal:20138/v1",
-        apiKey: "9router_local_secret",   // 9Router accepts any key locally
+        apiKey: "${ROUTER9_API_KEY}",   // real 9Router key (remote access needs auth); set in .env
         api: "openai-completions",
         models: [
           { id: "combo-coding",    name: "9Router Coding",    contextWindow: 128000, maxTokens: 8192 },
