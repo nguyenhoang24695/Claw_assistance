@@ -20,10 +20,18 @@ services:
       - "host.docker.internal:host-gateway"   # reach 9Router on the host
     ports:
       - "18789:18789"
+    # Docker-out-of-Docker (DooD): Cua drives the HOST docker daemon via the
+    # mounted socket. Containers it creates are SIBLINGS of claw-openclaw, not
+    # children. DOCKER_GID/DOCKER_BIN are exported (host-specific) by
+    # scripts/04-start-openclaw.sh — defaults below are only fallbacks.
+    group_add:
+      - "${DOCKER_GID:-999}"   # the host's 'docker' group GID, so uid 1000 can use the socket
     volumes:
       - ./openclaw-data/config:/home/node/.openclaw
       - ./openclaw-data/secrets:/home/node/.config/openclaw
       - ../../:/repo   # whole repo: Cua self-documents into docs/, plugins/ (git-tracked)
+      - /var/run/docker.sock:/var/run/docker.sock        # DooD: talk to the host daemon
+      - ${DOCKER_BIN:-/usr/bin/docker}:/usr/bin/docker:ro  # docker CLI from host (read-only)
     security_opt:
       - no-new-privileges:true
     healthcheck:

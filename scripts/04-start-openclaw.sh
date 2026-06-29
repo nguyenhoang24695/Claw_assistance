@@ -48,6 +48,20 @@ sudo chown -R 1000:1000 "$OC/openclaw-data" 2>/dev/null \
   && ok "data dirs owned by uid 1000" \
   || warn "could not chown to 1000:1000 (may cause permission warnings)"
 
+# Docker-out-of-Docker wiring: the compose file mounts the host docker socket +
+# CLI into the container so Cua can spawn sibling containers. Both values are
+# host-specific, so resolve them here and export for compose interpolation.
+DOCKER_BIN="$(command -v docker || echo /usr/bin/docker)"
+# GID that owns the docker socket — this is what the container must join.
+if [ -S /var/run/docker.sock ]; then
+  DOCKER_GID="$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo 999)"
+else
+  DOCKER_GID="$(getent group docker | cut -d: -f3 2>/dev/null || echo 999)"
+  warn "/var/run/docker.sock not found — using docker group GID $DOCKER_GID"
+fi
+export DOCKER_BIN DOCKER_GID
+ok "DooD wiring: DOCKER_BIN=$DOCKER_BIN  DOCKER_GID=$DOCKER_GID"
+
 log "Pulling image + starting gateway…"
 $DC -f "$COMPOSE" pull openclaw-gateway
 $DC -f "$COMPOSE" up -d openclaw-gateway
@@ -66,6 +80,17 @@ case "$code" in
   2*) ok "gateway healthy (HTTP $code)" ;;
   *)  warn "no healthy response yet ($code). Check: docker logs claw-openclaw --tail 60" ;;
 esac
+
+# Verify Docker-out-of-Docker actually works from inside the container.
+log "Verifying DooD (docker access from inside the container)…"
+if docker exec claw-openclaw docker version --format '{{.Server.Version}}' >/dev/null 2>&1; then
+  ok "Cua can reach the host docker daemon (sibling containers OK)"
+else
+  warn "docker not usable inside claw-openclaw. Common causes:"
+  warn "  - docker CLI missing/incompatible: docker exec claw-openclaw docker --version"
+  warn "  - socket perms: container must join GID $DOCKER_GID (group_add in compose)"
+  warn "  - check: docker exec claw-openclaw ls -l /var/run/docker.sock"
+fi
 
 cat <<EOF
 
