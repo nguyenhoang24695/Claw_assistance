@@ -5,7 +5,12 @@
 # Secrets come from ../../.env (gitignored) — TELEGRAM_BOT_TOKEN etc.
 services:
   openclaw-gateway:
-    image: ghcr.io/openclaw/openclaw:latest
+    # Overlay image (see ./Dockerfile): OpenClaw + .NET 8 + Node 20 + tmux so Cua
+    # can build/run cloned projects by hand. image: tags it for openclaw-cli reuse.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: claw-openclaw:local
     container_name: claw-openclaw
     restart: unless-stopped
     init: true
@@ -20,6 +25,11 @@ services:
       - "host.docker.internal:host-gateway"   # reach 9Router on the host
     ports:
       - "18789:18789"
+      # Cloned project apps run by hand INSIDE this container; publish their
+      # ports so a browser can reach them. App must bind 0.0.0.0 (not localhost).
+      - "5080:5000"    # .NET backend  (dotnet run --urls http://0.0.0.0:5000)
+      - "5173:5173"    # React/Vite dev server (--host 0.0.0.0 --port 5173)
+      - "3000:3000"    # React CRA dev server (alternative to Vite)
     # Docker-out-of-Docker (DooD): Cua drives the HOST docker daemon via the
     # mounted socket. Containers it creates are SIBLINGS of claw-openclaw, not
     # children. DOCKER_GID/DOCKER_BIN are exported (host-specific) by
@@ -42,7 +52,7 @@ services:
       start_period: 20s
 
   openclaw-cli:
-    image: ghcr.io/openclaw/openclaw:latest
+    image: claw-openclaw:local   # reuse the overlay image built for the gateway
     network_mode: "service:openclaw-gateway"   # share gateway's network namespace
     depends_on:
       - openclaw-gateway

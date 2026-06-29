@@ -34,6 +34,29 @@ Không code lệch khỏi spec ở Bước 1.
 - Cập nhật `/repo/docs/system_spec.md`: ghi nhận tính năng mới (agent/channel/skill).
 - Restart để nạp (anh Hoang chạy trên host): `docker compose -f core/openclaw/docker-compose.yml restart openclaw-gateway`.
 
+## Quy trình triển khai dự án clone về (.NET + React)
+Container `claw-openclaw` đã có sẵn `dotnet 8`, `node 20`, `tmux`, và Docker
+(qua socket host — container tạo ra là ANH EM, không phải con). Quy trình cố
+định (đường dẫn tuyệt đối trong container):
+
+1. **Clone** vào trong mount repo để host thấy được (cần cho build context của redis/db):
+   `git clone <url> /repo/projects/<ten>`
+2. **Redis + DB** (chạy bằng Docker, là container anh em — publish port ra host):
+   `docker compose -f /repo/projects/<ten>/docker-compose.yml up -d`
+3. **Backend .NET** (chạy tay, nền, BIND 0.0.0.0 — nếu không sẽ không truy cập được từ ngoài):
+   `tmux new -d -s backend 'cd /repo/projects/<ten>/backend && dotnet run --urls http://0.0.0.0:5000'`
+4. **Frontend React** (chạy tay, nền, host 0.0.0.0):
+   - Vite: `tmux new -d -s frontend 'cd /repo/projects/<ten>/frontend && npm install && npm run dev -- --host 0.0.0.0 --port 5173'`
+   - CRA: `tmux new -d -s frontend 'cd /repo/projects/<ten>/frontend && npm install && PORT=3000 HOST=0.0.0.0 npm start'`
+5. **Xem log / dừng**: `tmux ls`, `tmux attach -t backend`, `tmux kill-session -t backend`.
+6. **Connection string**: app trỏ Redis/DB tới `host.docker.internal:<port>` — KHÔNG dùng
+   `localhost` (redis/db là container riêng, không cùng tiến trình với app).
+7. **Truy cập** (port đã publish trong docker-compose.yml): backend `http://<server-ip>:5080`,
+   frontend `http://<server-ip>:5173` (Vite) hoặc `:3000` (CRA).
+
+Lưu ý: clone / `docker compose up` / `dotnet run` / `npm install` là thao tác GHI →
+theo "Quy tắc dùng tool" bên dưới: nêu rõ ý định, chờ anh Hoang duyệt.
+
 ## Bản đồ thư mục cố định
 - Spec đặc tả → `/repo/docs/features/<ten>.md`
 - Skill tự sinh → `/home/node/.openclaw/workspace/skills/<ten>/SKILL.md`

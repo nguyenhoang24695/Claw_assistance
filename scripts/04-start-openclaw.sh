@@ -26,12 +26,23 @@ grep -q '^TELEGRAM_BOT_TOKEN=.\+' "$ROOT/.env" || die "TELEGRAM_BOT_TOKEN empty 
 
 DC="docker compose"; docker compose version >/dev/null 2>&1 || DC="docker-compose"
 
-# Port guard (server runs other projects).
-if ss -ltn 2>/dev/null | grep -q ":$PORT "; then
-  docker ps --format '{{.Names}} {{.Ports}}' | grep -q "claw-openclaw.*:$PORT->" \
-    && ok "port $PORT already served by our own claw-openclaw" \
-    || die "port $PORT in use by something else — change it in $COMPOSE"
-fi
+# Port guard (server runs other projects). Fatal for the gateway port; the app
+# ports (backend/frontend run by hand inside the container) are warn-only since
+# they're not needed until Cua deploys a project.
+guard_port() {  # $1=port  $2=label  $3=fatal(1)|warn(0)
+  ss -ltn 2>/dev/null | grep -q ":$1 " || { ok "port $1 ($2) free"; return; }
+  if docker ps --format '{{.Names}} {{.Ports}}' | grep -q "claw-openclaw.*:$1->"; then
+    ok "port $1 ($2) already served by our own claw-openclaw"
+  elif [ "$3" = 1 ]; then
+    die "port $1 ($2) in use by something else — change it in $COMPOSE"
+  else
+    warn "port $1 ($2) in use by something else — change it in $COMPOSE before deploying a project"
+  fi
+}
+guard_port "$PORT" "gateway" 1
+guard_port 5080 "app backend" 0
+guard_port 5173 "app frontend (vite)" 0
+guard_port 3000 "app frontend (cra)" 0
 
 # Prep bind-mount dirs and drop our config in. Container runs as uid 1000.
 log "Preparing data dirs + config…"
@@ -62,8 +73,10 @@ fi
 export DOCKER_BIN DOCKER_GID
 ok "DooD wiring: DOCKER_BIN=$DOCKER_BIN  DOCKER_GID=$DOCKER_GID"
 
-log "Pulling image + starting gateway…"
-$DC -f "$COMPOSE" pull openclaw-gateway
+log "Building overlay image (OpenClaw + .NET 8 + Node 20 + tmux) + starting gateway…"
+# --pull keeps the OpenClaw base layer up to date; the overlay (Dockerfile) adds
+# the runtimes Cua needs. First build is slow (~.NET SDK download); later builds cache.
+$DC -f "$COMPOSE" build --pull openclaw-gateway
 $DC -f "$COMPOSE" up -d openclaw-gateway
 
 log "Container status:"
@@ -91,6 +104,15 @@ else
   warn "  - socket perms: container must join GID $DOCKER_GID (group_add in compose)"
   warn "  - check: docker exec claw-openclaw ls -l /var/run/docker.sock"
 fi
+
+# Verify the runtimes Cua needs to run cloned projects are baked into the image.
+log "Verifying project runtimes inside the container…"
+dn="$(docker exec claw-openclaw dotnet --version 2>/dev/null || true)"
+nd="$(docker exec claw-openclaw node --version 2>/dev/null || true)"
+tm="$(docker exec claw-openclaw tmux -V 2>/dev/null || true)"
+[ -n "$dn" ] && ok "dotnet $dn"        || warn "dotnet missing — overlay build may have failed (check Dockerfile/base distro)"
+[ -n "$nd" ] && ok "node $nd"          || warn "node missing — overlay build may have failed"
+[ -n "$tm" ] && ok "$tm"               || warn "tmux missing — long-running app processes won't survive exec timeout"
 
 cat <<EOF
 
