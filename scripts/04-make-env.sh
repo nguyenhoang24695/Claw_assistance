@@ -17,10 +17,15 @@ fi
 GW_TOKEN="${OPENCLAW_GATEWAY_TOKEN:-$(openssl rand -hex 24)}"
 cat > "$ENV_FILE" <<EOF
 # OpenClaw container secrets (gitignored). LLM/Telegram routing lives in
-# core/openclaw/config/openclaw.json5 — these two are the runtime secrets.
+# core/openclaw/config/openclaw.json5 — these are the runtime secrets.
 TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
 OPENCLAW_GATEWAY_TOKEN=$GW_TOKEN
 ROUTER9_API_KEY=$ROUTER9_API_KEY
+# Optional: GitHub Personal Access Token so Cua can push code over HTTPS.
+# Leave empty to allow public clones only (no push). Prefer a FINE-GRAINED PAT
+# scoped to just the repos Cua manages. 04-start-openclaw.sh wires it into the
+# container's git credential store on start.
+GITHUB_TOKEN=${GITHUB_TOKEN:-}
 EOF
 chmod 600 "$ENV_FILE"
 echo "  ✓ wrote $ENV_FILE (mode 600)"

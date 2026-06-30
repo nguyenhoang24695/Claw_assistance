@@ -5,8 +5,9 @@
 # Secrets come from ../../.env (gitignored) — TELEGRAM_BOT_TOKEN etc.
 services:
   openclaw-gateway:
-    # Overlay image (see ./Dockerfile): OpenClaw + .NET 8 + Node 20 + tmux so Cua
-    # can build/run cloned projects by hand. image: tags it for openclaw-cli reuse.
+    # Slim overlay image (see ./Dockerfile): OpenClaw + git. Cua orchestrates —
+    # clones, commits/pushes, and drives the host docker daemon (DooD). Per-project
+    # runtimes live in each project's own container. image: tags it for cli reuse.
     build:
       context: .
       dockerfile: Dockerfile
@@ -24,12 +25,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"   # reach 9Router on the host
     ports:
-      - "18789:18789"
-      # Cloned project apps run by hand INSIDE this container; publish their
-      # ports so a browser can reach them. App must bind 0.0.0.0 (not localhost).
-      - "5080:5000"    # .NET backend  (dotnet run --urls http://0.0.0.0:5000)
-      - "5173:5173"    # React/Vite dev server (--host 0.0.0.0 --port 5173)
-      - "3000:3000"    # React CRA dev server (alternative to Vite)
+      - "18789:18789"   # Control UI. Project apps run in THEIR OWN containers and
+                        # publish their own ports — nothing app-specific here.
     # Docker-out-of-Docker (DooD): Cua drives the HOST docker daemon via the
     # mounted socket. Containers it creates are SIBLINGS of claw-openclaw, not
     # children. DOCKER_GID/DOCKER_BIN are exported (host-specific) by

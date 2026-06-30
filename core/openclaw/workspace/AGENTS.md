@@ -34,30 +34,32 @@ Không code lệch khỏi spec ở Bước 1.
 - Cập nhật `/repo/docs/system_spec.md`: ghi nhận tính năng mới (agent/channel/skill).
 - Restart để nạp (anh Hoang chạy trên host): `docker compose -f core/openclaw/docker-compose.yml restart openclaw-gateway`.
 
-## Quy trình triển khai dự án clone về (.NET + React)
-Container `claw-openclaw` đã có sẵn `dotnet 8`, `node 20`, `tmux`, và Docker
-(qua socket host — container tạo ra là ANH EM, không phải con). Quy trình cố
-định (đường dẫn tuyệt đối trong container):
+## Quy trình triển khai dự án (container-per-project)
+`claw-openclaw` là ORCHESTRATOR gọn: chỉ có `git` + `docker` CLI (điều khiển
+daemon host qua socket — container tạo ra là ANH EM). **KHÔNG** chứa runtime
+(.NET, Node, Python...) và **KHÔNG** chạy app trực tiếp trong nó. Mỗi dự án chạy
+container riêng với runtime của chính nó. Đường dẫn tuyệt đối trong container:
 
-1. **Clone** vào trong mount repo để host thấy được (cần cho build context của redis/db):
+1. **Clone** vào `/repo/projects/<ten>` (trong mount → host thấy được, cần cho build context):
    `git clone <url> /repo/projects/<ten>`
-2. **Redis + DB** (chạy bằng Docker, là container anh em — publish port ra host):
-   `docker compose -f /repo/projects/<ten>/docker-compose.yml up -d`
-3. **Backend .NET** (chạy tay, nền, BIND 0.0.0.0 — nếu không sẽ không truy cập được từ ngoài):
-   `tmux new -d -s backend 'cd /repo/projects/<ten>/backend && dotnet run --urls http://0.0.0.0:5000'`
-4. **Frontend React** (chạy tay, nền, host 0.0.0.0):
-   - Vite: `tmux new -d -s frontend 'cd /repo/projects/<ten>/frontend && npm install && npm run dev -- --host 0.0.0.0 --port 5173'`
-   - CRA: `tmux new -d -s frontend 'cd /repo/projects/<ten>/frontend && npm install && PORT=3000 HOST=0.0.0.0 npm start'`
-5. **Xem log / dừng**: `tmux ls`, `tmux attach -t backend`, `tmux kill-session -t backend`.
-6. **Connection string**: app trỏ Redis/DB tới `host.docker.internal:<port>` — KHÔNG dùng
-   `localhost` (redis/db là container riêng, không cùng tiến trình với app).
-7. **Truy cập** (port đã publish trong docker-compose.yml): backend `http://<server-ip>:5080`,
-   frontend `http://<server-ip>:5173` (Vite) hoặc `:3000` (CRA).
+2. **Mỗi service một container.** Nếu repo đã có `Dockerfile`/`docker-compose.yml` → dùng luôn.
+   Nếu chưa → Cua **sinh Dockerfile** cho từng phần:
+   - Backend .NET: `FROM mcr.microsoft.com/dotnet/sdk:8.0` (build) → publish → runtime image `aspnet:8.0`.
+   - Frontend React: `FROM node:20` build (`npm ci && npm run build`) → serve bằng `nginx:alpine` (hoặc `npm run preview`).
+   - Redis/DB: dùng image chính thức (`redis:7`, `postgres:16`...), KHÔNG tự viết.
+   Gom lại bằng `docker-compose.yml` của dự án, rồi `docker compose -f /repo/projects/<ten>/docker-compose.yml up -d --build`.
+3. **Mạng & port:** các service CÙNG dự án nói chuyện qua docker network của dự án đó (gọi nhau
+   bằng TÊN SERVICE, vd `redis`, `db` — KHÔNG dùng `localhost`/`host.docker.internal`). Chỉ
+   service cần truy cập từ ngoài mới publish port; tự chọn dải port host TRỐNG (kiểm tra `ss -ltn`
+   trước để tránh đụng dự án khác trên server).
+4. **Commit/push:** Cua dùng git ngay trong claw-openclaw (token HTTPS đã cấu hình sẵn):
+   `git -C /repo/projects/<ten> add -A && git -C /repo/projects/<ten> commit -m "..." && git -C /repo/projects/<ten> push`.
 
-Lưu ý: clone / `docker compose up` / `dotnet run` / `npm install` là thao tác GHI →
+Lưu ý: clone / `docker compose up --build` / `git push` là thao tác GHI →
 theo "Quy tắc dùng tool" bên dưới: nêu rõ ý định, chờ anh Hoang duyệt.
 
 ## Bản đồ thư mục cố định
+- Dự án clone về → `/repo/projects/<ten>` (mỗi dự án chạy container riêng)
 - Spec đặc tả → `/repo/docs/features/<ten>.md`
 - Skill tự sinh → `/home/node/.openclaw/workspace/skills/<ten>/SKILL.md`
 - Plugin (tool/channel) → `/repo/core/openclaw/plugins/<ten>/`

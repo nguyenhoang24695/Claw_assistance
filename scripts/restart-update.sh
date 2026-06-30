@@ -28,10 +28,10 @@ log "Updating 9Router…"
 bash "$SCRIPT_DIR/01-start-9router.sh"
 
 # 2. OpenClaw — bring it DOWN first so it re-reads .env on the way up, then
-#    the start script BUILDS the overlay image (OpenClaw + .NET 8 + Node 20 +
-#    tmux; `build --pull` keeps the base fresh — no plain image pull anymore),
-#    re-copies config, and health-checks. `down` (no -v / --rmi) leaves the
-#    local overlay image and bind-mount data intact.
+#    the start script BUILDS the slim overlay image (OpenClaw + git; `build --pull`
+#    keeps the base fresh — no plain image pull anymore), re-copies config, and
+#    health-checks. `down` (no -v / --rmi) leaves the local overlay image and
+#    bind-mount data intact.
 log "Recreating OpenClaw (so it re-reads .env + config)…"
 $DC -f "$OC_COMPOSE" down
 bash "$SCRIPT_DIR/04-start-openclaw.sh"
