@@ -95,10 +95,12 @@ else
   warn "  - check: docker exec claw-openclaw ls -l /var/run/docker.sock"
 fi
 
-# Verify git is present (Cua clones + commits/pushes from inside the container).
-log "Verifying git inside the container…"
+# Verify orchestration tooling: git (clone/commit/push) + docker compose plugin.
+log "Verifying orchestration tooling inside the container…"
 gv="$(docker exec claw-openclaw git --version 2>/dev/null || true)"
+cv="$(docker exec claw-openclaw docker compose version 2>/dev/null || true)"
 [ -n "$gv" ] && ok "$gv" || warn "git missing — overlay build may have failed (check Dockerfile)"
+[ -n "$cv" ] && ok "docker compose: ${cv%%$'\n'*}" || warn "docker compose plugin missing — Cua can't 'docker compose up' (check Dockerfile)"
 
 # Git credentials: if .env carries a GITHUB_TOKEN, wire HTTPS push so Cua never
 # prompts. Stored in the container's ~/.git-credentials (uid 1000 = node).
